@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { PostEntity } from "src/post/entities/post.entity";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm";
 
 @Entity('users')
 export class UserEntity {
@@ -14,6 +15,9 @@ export class UserEntity {
 
     @Column({ type: 'varchar', length: 255 })
     password: string; 
+
+    @OneToMany(() => PostEntity, (post) => post.user)
+    posts: PostEntity[];
 
     @CreateDateColumn({ type: 'timestamptz' })
     createdAt: Date; 
