@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
-import { UserEntity } from 'src/user/entities/user.entity';
-import { PostEntity } from './entities/post.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { PostEntity } from './entities/post.entity';
+import { UserEntity } from 'src/user/entities/user.entity';
+import { QueryPostDto } from './dto/query-post.dto';
 
 @Injectable()
 export class PostService {
@@ -15,25 +16,82 @@ export class PostService {
   ) {}
 
   async createPost(createPostDto: CreatePostDto, user: UserEntity): Promise<PostEntity> {
-      const post = this.postRepository.create({ ...createPostDto, user });
-      return await this.postRepository.save(post);
+    const post = this.postRepository.create({ ...createPostDto, user });
+    return await this.postRepository.save(post);
   }
-   
- 
 
-  findAll() {
-    return `This action returns all post`;
+  async getAllPost(query: QueryPostDto): Promise<{
+    data: PostEntity[];
+    total: number;
+    currentPage: number;
+    totalPages: number;
+  }> {
+    const {
+      keyword,
+      startDate,
+      endDate,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+      limit = '10',
+      page = '1',
+    } = query;
+
+    const qb = this.postRepository.createQueryBuilder('post');
+
+    // Apply filtering by keyword
+    if (keyword) {
+      qb.where('post.title ILIKE :keyword OR post.content ILIKE :keyword', {
+        keyword: `%${keyword}%`,
+      });
+    }
+
+    // Apply filtering by date range
+    if (startDate && endDate) {
+      qb.andWhere('post.createdAt BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      });
+    }
+
+    // Apply sorting
+    qb.orderBy(`post.${sortBy}`, sortOrder);
+
+    // Pagination logic
+    const take = parseInt(limit, 10);
+    const skip = (parseInt(page, 10) - 1) * take;
+    qb.take(take).skip(skip);
+
+    // Execute the query
+    const [data, total] = await qb.getManyAndCount();
+
+    // Return the results with pagination metadata
+    return {
+      data,
+      total,
+      currentPage: parseInt(page, 10),
+      totalPages: Math.ceil(total / take),
+    };
   }
 
   findOne(id: number) {
     return `This action returns a #${id} post`;
   }
 
-  update(id: number, updatePostDto: UpdatePostDto) {
-    return `This action updates a #${id} post`;
+  async updatePost(postId: number, updatePostDto: UpdatePostDto, user: UserEntity): Promise<PostEntity> {
+    const post = await this.postRepository.findOne({ where: { id: postId, user } });
+    if (!post) {
+      throw new UnauthorizedException('You are not authorized to update this post');
+    }
+    Object.assign(post, updatePostDto);
+    return this.postRepository.save(post);
+  
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} post`;
+  async deletePost(postId: number, user: UserEntity): Promise<void> {
+    const post = await this.postRepository.findOne({ where: { id: postId, user } });
+    if (!post) {
+      throw new UnauthorizedException('You are not authorized to delete this post');
+    }
+    await this.postRepository.remove(post);
   }
 }

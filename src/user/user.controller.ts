@@ -5,6 +5,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UserSignUpDto } from './dto/user-signup.dto';
 import { UserEntity } from './entities/user.entity';
 import { UserSignInDto } from './dto/user.signin.dto';
+import { CurrentUser } from 'src/decorator/current-user-decorators';
 
 
 @Controller('users')
@@ -19,13 +20,15 @@ export class UserController {
   @Post('signin')
   async signin(@Body() body: UserSignInDto): Promise<{
     accessToken: string;
+    refreshToken: string;
     user: UserEntity;
   }> {
     const user = await this.userService.signin(body);
 
     const accessToken = await this.userService.accessToken(user);
+    const refreshToken = await this.userService.refreshToken(user);
 
-    return { accessToken, user };
+    return { accessToken, refreshToken, user };
   }
 
   @Post()
@@ -52,5 +55,10 @@ export class UserController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.userService.remove(+id);
+  }
+
+  @Get(':user')
+  getProfile(@CurrentUser() currentUser: UserEntity) {
+    return currentUser;
   }
 }

@@ -29,6 +29,12 @@ export class UserService {
     return sign({id:user.id, email:user.email},process.env.ACCESS_TOKEN_SECRET_KEY,{expiresIn:process.env.ACCESS_TOKEN_EXPIRE_TIME})
   }
 
+  async refreshToken(user:UserEntity): Promise<string>{
+    return sign({id:user.id, email:user.email},process.env.REFRESH_TOKEN_SECRET_KEY,{expiresIn:process.env.REFRESH_TOKEN_EXPIRE_TIME})
+  }
+
+
+
   async signup(body: UserSignUpDto): Promise<UserEntity> {
 
     const userExists = await this.findUserByEmail(body.email);
@@ -44,7 +50,6 @@ export class UserService {
 
 
   async signin(body: UserSignInDto): Promise<UserEntity> {
-    // const userExists = await this.findUserByEmail(body.email);
 
     const userExists = await this.usersRepository.createQueryBuilder('users').addSelect('users.password').where('users.email=email', { email: body.email }).getOne();
     //console.log(userExists);
@@ -70,11 +75,6 @@ export class UserService {
     return await this.usersRepository.find();
   }
 
-  // async findOne(id: number) {
-  //   const user = await this.usersRepository.findOneBy({id}); 
-  //   if(!user) throw new NotFoundException('User Does Not Exist!')
-    //return user 
-  // }
   async findOne(id: number): Promise<UserEntity> {
     const user = await this.usersRepository.findOne({ where: { id } });
     return user; 
